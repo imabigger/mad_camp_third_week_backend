@@ -1,0 +1,39 @@
+
+services:
+  mongo:
+    image: mongo
+    container_name: mongo
+    environment:
+      - MONGO_INITDB_DATABASE=${DB_NAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASSWORD}
+      - MONGO_INITDB_ROOT_USERNAME=${DB_ADMIN}
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: "echo 'db.runCommand(\"ping\").ok' | mongosh mongo:27017 --quiet"
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./.env:/usr/src/app/.env
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATA_MONGODB_URI=mongodb://${DB_ADMIN}:${DB_PASSWORD}@mongo:27017/${DB_NAME}?authSource=admin
+      - SPRING_DATA_MONGODB_DATABASE_NAME=mydatabase
+    depends_on:
+      mongo:
+        condition: service_healthy
+    links:
+      - mongo
+
+
+volumes:
+  mongo-data:
